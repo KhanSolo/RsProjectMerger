@@ -1,22 +1,18 @@
 use std::env;
-use std::ffi::OsStr;
+//use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-static IGNORED_DIRECTORIES : &'static [&str] = &[
-        "bin",
-        "obj",
-        ".git",
-        ".vs"
-];
+static IGNORED_DIRECTORIES: &'static [&str] = &["bin", "obj", ".git", ".vs"];
 
+#[derive(Copy, Clone, PartialEq)]
 enum ExtensionType {
     Csproj,
     Sln,
 }
 
 fn main() -> ExitCode {
-    let args : Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
     // args[0] - executable
     if args.len() < 2 || args.len() > 3 {
@@ -30,41 +26,81 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let mut extension : Option<&OsStr> = None;
-    if let Some(ext ) =  input_path.extension() {
-        if !check_extension(ext) {
-            println!("Extension {} is not supported", ext.display());
-            return ExitCode::FAILURE;
-        }
-        extension = Some(ext);
-    } else {
-        println!("Cannot get extension of the {}", input_path.display());
+    let Some(extension_type) = to_extension_type(input_path) else {
         return ExitCode::FAILURE;
-    }
+    };
 
-    let output_path = (
-         if args.len() == 3 {
-            PathBuf::from(&args[2])
-        } else {
-            input_path
+    let output_path = (if args.len() == 3 {
+        PathBuf::from(&args[2])
+    } else {
+        input_path
             .parent()
             .unwrap_or(Path::new("."))
             .join(Path::new("merged-project.txt"))
-        }
-    ).as_path();
+    })
+    .as_path();
 
-    let projects = if extension.unwrap().to_str().unwrap().to_lowercase() == "csproj" {
-
+    let projects = if extension_type == ExtensionType::Csproj {
+        vec![input_path]
     } else {
-
+        find_projects_in_solution(input_path)
     };
+
+    let projects_count = projects.len();
+    if projects_count == 0 {
+        println!("No C# projects found.");
+        return ExitCode::FAILURE;
+    }
+    println!("Projects found {}", &projects_count);
+    for project in projects {
+        println!("{}", project.display());
+    }
+
 
     println!("todo: implement logic");
     ExitCode::SUCCESS
 }
 
+
+fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
+    let ext = match input_path.extension() {
+        Some(ext) => ext,
+        None => {
+            println!("Cannot get extension of {}", input_path.display());
+            return None;
+        }
+    };
+
+    let ext_str = match ext.to_str() {
+        Some(ext) => ext,
+        None => {
+            println!("Cannot parse extension of {}", input_path.display());
+            return None;
+        }
+    };
+
+    // if ext_str.eq_ignore_ascii_case("csproj") {
+    //     Some(ExtensionType::Csproj)
+    // } else if ext_str.eq_ignore_ascii_case("sln") {
+    //     Some(ExtensionType::Sln)
+    // } else {
+    //     println!("Extension {} is not supported", ext.display());
+    //     None
+    // }
+    match ext_str {
+        ext_str if ext_str.eq_ignore_ascii_case("csproj") => Some(ExtensionType::Csproj),
+        ext_str if ext_str.eq_ignore_ascii_case("sln") => Some(ExtensionType::Sln),
+        _ => None,
+    }
+}
+
+fn find_projects_in_solution(input_path: &Path) -> Vec<&Path> {
+    todo!()
+}
+
 fn print_usage() {
-    println!("
+    println!(
+        "
              C# Project Merger
 
             Usage:
@@ -78,15 +114,6 @@ fn print_usage() {
 
             If output-file is omitted:
               merged-project.txt    
-    ");    
+    "
+    );
 }
-
-fn check_extension(extension:&OsStr) -> bool {
-    if let Some(ext) = extension.to_str() {
-        let lower = ext.to_lowercase();
-        lower == "csproj" || lower == "sln"
-    } else {
-        false
-    }
-}
-
