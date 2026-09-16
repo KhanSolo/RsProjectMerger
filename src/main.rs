@@ -1,5 +1,5 @@
 use std::env;
-//use std::ffi::OsStr;
+use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -22,7 +22,7 @@ fn main() -> ExitCode {
 
     let input_path = Path::new(&args[1]);
     if !input_path.exists() {
-        println!("Input file not found {}", input_path.display());
+        eprintln!("Input file not found {}", input_path.display());
         return ExitCode::FAILURE;
     }
 
@@ -48,7 +48,7 @@ fn main() -> ExitCode {
 
     let projects_count = projects.len();
     if projects_count == 0 {
-        println!("No C# projects found.");
+        eprintln!("No C# projects found.");
         return ExitCode::FAILURE;
     }
     println!("Projects found {}", &projects_count);
@@ -56,8 +56,27 @@ fn main() -> ExitCode {
         println!("{}", project.display());
     }
 
+    let content: &String = build_merged_file(projects, output_path);
 
-    println!("todo: implement logic");
+    let Some(out_dir) = output_path.parent() else {
+        eprintln!("Cannot get output directory for {}", output_path.display());
+        return ExitCode::FAILURE; // todo
+    };
+
+    let Ok(()) = create_dir_all(out_dir) else {
+        eprintln!("Cannot create output directory {}", out_dir.display());
+        return ExitCode::FAILURE;
+    };
+
+    // File.WriteAllText(
+    //     outputPath,
+    //     content,
+    //     new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+    // Console.WriteLine();
+    // Console.WriteLine($"Created: {outputPath}");
+    // Console.WriteLine($"Size: {content.Length:N0} characters");
+
     ExitCode::SUCCESS
 }
 
@@ -79,14 +98,6 @@ fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
         }
     };
 
-    // if ext_str.eq_ignore_ascii_case("csproj") {
-    //     Some(ExtensionType::Csproj)
-    // } else if ext_str.eq_ignore_ascii_case("sln") {
-    //     Some(ExtensionType::Sln)
-    // } else {
-    //     println!("Extension {} is not supported", ext.display());
-    //     None
-    // }
     match ext_str {
         ext_str if ext_str.eq_ignore_ascii_case("csproj") => Some(ExtensionType::Csproj),
         ext_str if ext_str.eq_ignore_ascii_case("sln") => Some(ExtensionType::Sln),
@@ -95,6 +106,10 @@ fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
 }
 
 fn find_projects_in_solution(input_path: &Path) -> Vec<&Path> {
+    todo!()
+}
+
+fn build_merged_file(projects:Vec<&Path>, output_path:&Path) -> &String {
     todo!()
 }
 
