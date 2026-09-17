@@ -30,15 +30,15 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    let output_path = (if args.len() == 3 {
+    let binding = if args.len() == 3 {
         PathBuf::from(&args[2])
     } else {
         input_path
             .parent()
             .unwrap_or(Path::new("."))
             .join(Path::new("merged-project.txt"))
-    })
-    .as_path();
+    };
+    let output_path = binding.as_path();
 
     let projects = if extension_type == ExtensionType::Csproj {
         vec![input_path]
@@ -52,11 +52,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     println!("Projects found {}", &projects_count);
-    for project in projects {
+    for project in &projects {
         println!("{}", project.display());
     }
 
-    let content: &String = build_merged_file(projects, output_path);
+    let mut content  = String::new();
+    build_merged_file(&content, projects, output_path);
 
     let Some(out_dir) = output_path.parent() else {
         eprintln!("Cannot get output directory for {}", output_path.display());
@@ -73,13 +74,26 @@ fn main() -> ExitCode {
     //     content,
     //     new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
-    // Console.WriteLine();
-    // Console.WriteLine($"Created: {outputPath}");
-    // Console.WriteLine($"Size: {content.Length:N0} characters");
+    println!();
+    println!("Created: {}", output_path.display());
+    println!("Size: {} characters", format_with_commas(content.len()));
 
     ExitCode::SUCCESS
 }
 
+fn format_with_commas(n:usize) -> String {
+    let s = n.to_string();
+    let mut r = String::new();
+
+    for (i, c) in s.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            r.push(',');
+        }
+        r.push(c);
+    }
+
+    r.chars().rev().collect()
+}
 
 fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
     let ext = match input_path.extension() {
@@ -109,7 +123,7 @@ fn find_projects_in_solution(input_path: &Path) -> Vec<&Path> {
     todo!()
 }
 
-fn build_merged_file(projects:Vec<&Path>, output_path:&Path) -> &String {
+fn build_merged_file(builder:&mut String, projects:Vec<&Path>, output_path:&Path) -> () {
     todo!()
 }
 
@@ -131,4 +145,15 @@ fn print_usage() {
               merged-project.txt    
     "
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        let result = format_with_commas(2026);
+        assert_eq!(result, "2,026");
+    }
 }
