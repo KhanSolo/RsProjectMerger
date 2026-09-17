@@ -1,5 +1,6 @@
 use std::env;
-use std::fs::create_dir_all;
+use std::fmt::Write;
+use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -64,12 +65,14 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE; // todo
     };
 
-    let Ok(()) = create_dir_all(out_dir) else {
-        eprintln!("Cannot create output directory {}", out_dir.display());
-        return ExitCode::FAILURE;
-    };
+    if !out_dir.exists() {
+        let Ok(()) = create_dir_all(out_dir) else {
+            eprintln!("Cannot create output directory {}", out_dir.display());
+            return ExitCode::FAILURE;
+        };
+    }
 
-    let Ok(()) = std::fs::write(output_path, &content) else{
+    let Ok(()) = fs::write(output_path, &content) else{
         eprintln!("Cannot create output file {}", output_path.display());
         return ExitCode::FAILURE;
     };
@@ -124,7 +127,33 @@ fn find_projects_in_solution(input_path: &Path) -> Vec<&Path> {
 }
 
 fn build_merged_file(builder:&mut String, projects:Vec<&Path>, output_path:&Path) -> () {
-    todo!()
+
+    for project_path in projects  {
+        append_project(builder, project_path, output_path);
+    }
+}
+
+fn append_project(builder:&mut String, project_path: &Path, output_full_path: &Path) {
+
+}
+
+fn append_header(builder:&mut String, file_path: &Path) {
+    writeln!(builder, "// {}", file_path.display()).expect("could not append to builder");
+}
+
+fn is_ignored_directory(file_path: &Path) -> bool {
+
+    let mut directory = file_path.parent();
+    while !directory.is_none() {
+        //let directory_name = ; // todo: get last folder segment
+
+        // todo: compare it case insensitive with Ignored Directories, if contains - return true
+
+        directory = directory
+                .unwrap_or(Path::new("."))
+                .parent();
+    }
+    false
 }
 
 fn print_usage() {
