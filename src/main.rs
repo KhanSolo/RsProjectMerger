@@ -57,7 +57,7 @@ fn main() -> ExitCode {
     }
 
     let mut content  = String::new();
-    build_merged_file(&content, projects, output_path);
+    build_merged_file(&mut content, projects, output_path);
 
     let Some(out_dir) = output_path.parent() else {
         eprintln!("Cannot get output directory for {}", output_path.display());
@@ -69,10 +69,10 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
 
-    // File.WriteAllText(
-    //     outputPath,
-    //     content,
-    //     new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+    let Ok(()) = std::fs::write(output_path, &content) else{
+        eprintln!("Cannot create output file {}", output_path.display());
+        return ExitCode::FAILURE;
+    };
 
     println!();
     println!("Created: {}", output_path.display());
