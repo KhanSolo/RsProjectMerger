@@ -72,7 +72,7 @@ fn main() -> ExitCode {
         };
     }
 
-    let Ok(()) = fs::write(output_path, &content) else{
+    let Ok(()) = fs::write(output_path, &content) else {
         eprintln!("Cannot create output file {}", output_path.display());
         return ExitCode::FAILURE;
     };
@@ -144,15 +144,20 @@ fn append_header(builder:&mut String, file_path: &Path) {
 fn is_ignored_directory(file_path: &Path) -> bool {
 
     let mut directory = file_path.parent();
-    while !directory.is_none() {
-        //let directory_name = ; // todo: get last folder segment
 
-        // todo: compare it case insensitive with Ignored Directories, if contains - return true
+    while let Some(dir) = directory {
+        if let Some(dir_name) = dir.file_name().and_then(|s| s.to_str()) { // get last folder segment
+            if IGNORED_DIRECTORIES
+                .iter()
+                .any(|ignored| dir_name.eq_ignore_ascii_case(ignored)) // case insensitive (ascii)
+            {
+                return true;
+            }
+        }
 
-        directory = directory
-                .unwrap_or(Path::new("."))
-                .parent();
+        directory = dir.parent();
     }
+
     false
 }
 
@@ -179,10 +184,24 @@ fn print_usage() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
-    fn it_works() {
+    fn test_format_with_commas_success() {
         let result = format_with_commas(2026);
         assert_eq!(result, "2,026");
+    }
+
+    #[rstest]
+    #[case("c:\\src\\project\\bin\\temp\\", true)]
+    #[case("C:\\SRC\\PROJECT\\BIN\\TEMP\\", true)]
+    #[case("c:\\src\\project\\", false)]
+    fn test_is_ignored_directory_success(
+        #[case] path : &str,
+        #[case] expected : bool
+    ) {
+        let file_path = Path::new(path);
+        let result = is_ignored_directory(file_path);
+        assert_eq!(result, expected);
     }
 }
