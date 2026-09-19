@@ -5,7 +5,6 @@ use crate::utils::*;
 use crate::merger::*;
 
 use std::env;
-use std::fmt::Write;
 use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -19,17 +18,17 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let input_path = Path::new(&args[1]);
+    let input_path = PathBuf::from(&args[1]);
     if !input_path.exists() {
         eprintln!("Input file not found {}", input_path.display());
         return ExitCode::FAILURE;
     }
 
-    let Some(extension_type) = to_extension_type(input_path) else {
+    let Some(extension_type) = to_extension_type(input_path.as_path()) else {
         return ExitCode::FAILURE;
     };
 
-    let binding = if args.len() == 3 {
+    let output_path_owned = if args.len() == 3 {
         PathBuf::from(&args[2])
     } else {
         input_path
@@ -37,13 +36,13 @@ fn main() -> ExitCode {
             .unwrap_or(Path::new("."))
             .join(Path::new("merged-project.txt"))
     };
-    let output_path = binding.as_path();
+    let output_path = output_path_owned.as_path();
 
-    let projects = if extension_type == ExtensionType::Csproj {
-        vec![input_path]
-    } else {
-        find_projects_in_solution(input_path)
+    let projects_owned = match extension_type {
+        ExtensionType::Csproj => vec![input_path],
+        ExtensionType::Sln => find_projects_in_solution(input_path.as_path()).unwrap_or(vec![]),
     };
+    let projects:Vec<&Path> = projects_owned.iter().map(|p| p.as_path()).collect();
 
     let projects_count = projects.len();
     if projects_count == 0 {
@@ -55,8 +54,7 @@ fn main() -> ExitCode {
         println!("{}", project.display());
     }
 
-    let mut content  = String::new();
-    build_merged_file(&mut content, projects, output_path);
+    let content = build_merged_file(projects, output_path);
 
     let Some(out_dir) = output_path.parent() else {
         eprintln!("Cannot get output directory for {}", output_path.display());
