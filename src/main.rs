@@ -1,16 +1,14 @@
+mod utils;
+mod merger;
+
+use crate::utils::*;
+use crate::merger::*;
+
 use std::env;
 use std::fmt::Write;
 use std::fs::{self, create_dir_all};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
-
-static IGNORED_DIRECTORIES: &'static [&str] = &["bin", "obj", ".git", ".vs"];
-
-#[derive(Copy, Clone, PartialEq)]
-enum ExtensionType {
-    Csproj,
-    Sln,
-}
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
@@ -84,83 +82,6 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn format_with_commas(n:usize) -> String {
-    let s = n.to_string();
-    let mut r = String::new();
-
-    for (i, c) in s.chars().rev().enumerate() {
-        if i > 0 && i % 3 == 0 {
-            r.push(',');
-        }
-        r.push(c);
-    }
-
-    r.chars().rev().collect()
-}
-
-fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
-    let ext = match input_path.extension() {
-        Some(ext) => ext,
-        None => {
-            println!("Cannot get extension of {}", input_path.display());
-            return None;
-        }
-    };
-
-    let ext_str = match ext.to_str() {
-        Some(ext) => ext,
-        None => {
-            println!("Cannot parse extension of {}", input_path.display());
-            return None;
-        }
-    };
-
-    match ext_str {
-        ext_str if ext_str.eq_ignore_ascii_case("csproj") => Some(ExtensionType::Csproj),
-        ext_str if ext_str.eq_ignore_ascii_case("sln") => Some(ExtensionType::Sln),
-        _ => None,
-    }
-}
-
-fn find_projects_in_solution(input_path: &Path) -> Vec<&Path> {
-    todo!()
-}
-
-fn build_merged_file(builder:&mut String, projects:Vec<&Path>, output_path:&Path) -> () {
-
-    for project_path in projects  {
-        append_project(builder, project_path, output_path);
-    }
-}
-
-fn append_project(builder:&mut String, project_path: &Path, output_full_path: &Path) {
-
-}
-
-fn append_header(builder:&mut String, file_path: &Path) {
-    writeln!(builder, "// {}", file_path.display()).expect("could not append to builder");
-}
-
-fn is_ignored_directory(file_path: &Path) -> bool {
-
-    let mut directory = file_path.parent();
-
-    while let Some(dir) = directory {
-        if let Some(dir_name) = dir.file_name().and_then(|s| s.to_str()) { // get last folder segment
-            if IGNORED_DIRECTORIES
-                .iter()
-                .any(|ignored| dir_name.eq_ignore_ascii_case(ignored)) // case insensitive (ascii)
-            {
-                return true;
-            }
-        }
-
-        directory = dir.parent();
-    }
-
-    false
-}
-
 fn print_usage() {
     println!(
         "
@@ -179,29 +100,4 @@ fn print_usage() {
               merged-project.txt    
     "
     );
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rstest::rstest;
-
-    #[test]
-    fn test_format_with_commas_success() {
-        let result = format_with_commas(2026);
-        assert_eq!(result, "2,026");
-    }
-
-    #[rstest]
-    #[case("c:\\src\\project\\bin\\temp\\", true)]
-    #[case("C:\\SRC\\PROJECT\\BIN\\TEMP\\", true)]
-    #[case("c:\\src\\project\\", false)]
-    fn test_is_ignored_directory_success(
-        #[case] path : &str,
-        #[case] expected : bool
-    ) {
-        let file_path = Path::new(path);
-        let result = is_ignored_directory(file_path);
-        assert_eq!(result, expected);
-    }
 }
