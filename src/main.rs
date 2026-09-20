@@ -1,8 +1,8 @@
-mod utils;
 mod merger;
+mod utils;
 
-use crate::utils::*;
 use crate::merger::*;
+use crate::utils::*;
 
 use std::env;
 use std::fs::{self, create_dir_all};
@@ -24,7 +24,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let extension_type = match to_extension_type(input_path.as_path()){
+    let extension_type = match to_extension_type(input_path.as_path()) {
         Ok(et) => et,
         Err(msg) => {
             eprintln!("{msg}");
@@ -46,7 +46,7 @@ fn main() -> ExitCode {
         ExtensionType::Csproj => vec![input_path],
         ExtensionType::Sln => find_projects_in_solution(input_path.as_path()).unwrap_or(vec![]),
     };
-    let projects:Vec<&Path> = projects_owned.iter().map(|p| p.as_path()).collect();
+    let projects: Vec<&Path> = projects_owned.iter().map(|p| p.as_path()).collect();
 
     let projects_count = projects.len();
     if projects_count == 0 {
