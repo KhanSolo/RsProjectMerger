@@ -1,34 +1,28 @@
-use std::path::Path;
+use std::path::{Path};
 
 static IGNORED_DIRECTORIES: &'static [&str] = &["bin", "obj", ".git", ".vs"];
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ExtensionType {
     Csproj,
     Sln,
 }
 
-pub fn to_extension_type(input_path: &Path) -> Option<ExtensionType> {
+pub fn to_extension_type(input_path: &Path) -> Result<ExtensionType, String> {
     let ext = match input_path.extension() {
         Some(ext) => ext,
-        None => {
-            println!("Cannot get extension of {}", input_path.display());
-            return None;
-        }
+        None => return Err(format!("Cannot get extension of {}", input_path.display())),        
     };
 
     let ext_str = match ext.to_str() {
         Some(ext) => ext,
-        None => {
-            println!("Cannot parse extension of {}", input_path.display());
-            return None;
-        }
+        None => return Err(format!("Cannot parse extension of {}", input_path.display())), 
     };
 
     match ext_str {
-        ext_str if ext_str.eq_ignore_ascii_case("csproj") => Some(ExtensionType::Csproj),
-        ext_str if ext_str.eq_ignore_ascii_case("sln") => Some(ExtensionType::Sln),
-        _ => None,
+        ext_str if ext_str.eq_ignore_ascii_case("csproj") => Ok(ExtensionType::Csproj),
+        ext_str if ext_str.eq_ignore_ascii_case("sln") => Ok(ExtensionType::Sln),
+        _ => Err(format!("Unsupported extension of {}", ext_str))
     }
 }
 
@@ -68,6 +62,22 @@ pub fn is_ignored_directory(file_path: &Path) -> bool {
 mod tests {
     use super::*;
     use rstest::rstest;
+
+    #[rstest]
+    #[case("c:\\src\\project\\project.csproj", ExtensionType::Csproj)]
+    #[case("c:\\src\\project\\project.sln", ExtensionType::Sln)]
+    #[case("project.csproj", ExtensionType::Csproj)]
+    #[case("project.sln", ExtensionType::Sln)]
+    fn test_to_extension_type_success(
+        #[case] path_str : &str,
+        #[case] expected : ExtensionType
+    ) {
+        let path = Path::new(path_str);
+        let Ok(result) = to_extension_type(path) else {
+            panic!("Cannot get ExtensionType");
+        };
+        assert_eq!(result, expected);
+    }
 
     #[rstest]
     #[case(2026, "2,026")]

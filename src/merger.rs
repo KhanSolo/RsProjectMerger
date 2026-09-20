@@ -77,11 +77,12 @@ pub fn append_project(builder:&mut String, project_path: &Path, output_full_path
             eprintln!("Cannot get file_all_text");
             return; // todo: create error
         };
-        let _ = writeln!(builder, "{}", file_all_text.trim());
-        let _ = writeln!(builder, ""); // new line      
+        writeln!(builder, "{}", file_all_text.trim()).expect("could not append to builder");
+        writeln!(builder, "").expect("could not append to builder"); // new line      
     }
 }
 
 pub fn append_header(builder:&mut String, file_path: &Path) {
     writeln!(builder, "// {}", file_path.display()).expect("could not append to builder");
+    writeln!(builder, "").expect("could not append to builder");
 }

@@ -24,8 +24,12 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let Some(extension_type) = to_extension_type(input_path.as_path()) else {
-        return ExitCode::FAILURE;
+    let extension_type = match to_extension_type(input_path.as_path()){
+        Ok(et) => et,
+        Err(msg) => {
+            eprintln!("{msg}");
+            return ExitCode::FAILURE;
+        }
     };
 
     let output_path_owned = if args.len() == 3 {
