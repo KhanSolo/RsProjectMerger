@@ -46,7 +46,11 @@ pub fn format_with_commas(n: usize) -> String {
 }
 
 pub fn is_ignored_directory(file_path: &Path) -> bool {
-    let mut directory = file_path.parent();
+    let mut directory = if file_path.is_file() {
+        file_path.parent()
+    } else {
+        Some(file_path)
+    };
 
     while let Some(dir) = directory {
         if let Some(dir_name) = dir.file_name().and_then(|s| s.to_str()) {
