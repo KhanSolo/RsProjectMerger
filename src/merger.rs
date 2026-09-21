@@ -7,7 +7,7 @@ use crate::utils::is_ignored_directory;
 
 pub fn find_projects_in_solution(solution_path: &Path) -> Result<Vec<PathBuf>> {
     let solution_directory = solution_path.parent().unwrap_or(Path::new("."));
-    let mut projects = Vec::<PathBuf>::new();
+    let mut projects: Vec<PathBuf> = Vec::new();
 
     let solution_file = File::open(solution_path)?;
     let reader = BufReader::new(solution_file);
@@ -86,8 +86,8 @@ pub fn append_header(builder: &mut String, file_path: &Path) {
     writeln!(builder, "").expect("could not append to builder"); // new line
 }
 
-fn collect_files(path: &Path) -> std::io::Result<Vec<PathBuf>> {
-    let mut files: Vec<PathBuf> = vec![];
+fn collect_files(path: &Path) -> Result<Vec<PathBuf>> {
+    let mut files: Vec<PathBuf> = Vec::new();
     let mut dirs = vec![path.to_path_buf()];
 
     while let Some(current_dir) = dirs.pop() {
@@ -95,29 +95,96 @@ fn collect_files(path: &Path) -> std::io::Result<Vec<PathBuf>> {
             let entry = entry?;
             let path = entry.path();
 
-            if is_ignored_directory(&path) {
-                println!("is_ignored_directory {}", path.display());
-                continue;
-            }
-
             if path.is_dir() {
-                println!("dirs.push {}", path.display());
-                dirs.push(path);
-            } else if path.is_file() {
-                println!("path.is_file() {}", path.display());
-                if let Some(ext) = path.extension() {
-                    println!(" ext.len: {}", &ext.len());
-                    if let Some(e) = ext.to_str()
-                        && e == "cs"
-                    {
-                        println!(" files.push {}", path.display());
-                        files.push(path);
-                    }
+                if !is_ignored_directory(&path) {
+                    dirs.push(path);
                 }
+            } else if path.extension().is_some_and(|e| e == "cs") {
+                files.push(path);
             }
         }
     }
-    files.sort();
-    println!("files.len() : {}", &files.len());
+    files.sort_unstable();
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    //use rstest::rstest;
+
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn collects_cs_files_recursively() -> Result<()> {
+        let temp = tempdir()?;
+
+        fs::create_dir(temp.path().join("src"))?;
+        fs::create_dir(temp.path().join("src/nested"))?;
+
+        fs::write(temp.path().join("a.cs"), "")?;
+        fs::write(temp.path().join("b.txt"), "")?;
+        fs::write(temp.path().join("src/c.cs"), "")?;
+        fs::write(temp.path().join("src/nested/d.cs"), "")?;
+
+        let files = collect_files(temp.path())?;
+
+        assert_eq!(files.len(), 3);
+        assert!(
+            files
+                .iter()
+                .all(|p| p.extension().is_some_and(|e| e == "cs"))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn returns_sorted_files() -> Result<()> {
+        let temp = tempdir()?;
+
+        fs::write(temp.path().join("z.cs"), "")?;
+        fs::write(temp.path().join("a.cs"), "")?;
+        fs::write(temp.path().join("m.cs"), "")?;
+
+        let files = collect_files(temp.path())?;
+
+        let expected = vec![
+            temp.path().join("a.cs"),
+            temp.path().join("m.cs"),
+            temp.path().join("z.cs"),
+        ];
+
+        assert_eq!(files, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn ignores_non_cs_files() -> Result<()> {
+        let temp = tempdir()?;
+
+        fs::write(temp.path().join("main.rs"), "")?;
+        fs::write(temp.path().join("data.json"), "")?;
+        fs::write(temp.path().join("readme.md"), "")?;
+        fs::write(temp.path().join("Program.cs"), "")?;
+
+        let files = collect_files(temp.path())?;
+
+        assert_eq!(files, vec![temp.path().join("Program.cs")]);
+
+        Ok(())
+    }
+
+    #[test]
+    fn returns_empty_for_empty_directory() -> Result<()> {
+        let temp = tempdir()?;
+
+        let files = collect_files(temp.path())?;
+
+        assert!(files.is_empty());
+
+        Ok(())
+    }
 }

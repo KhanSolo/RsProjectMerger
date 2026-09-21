@@ -74,10 +74,10 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case("c:\\src\\project\\project.csproj", ExtensionType::Csproj)]
-    #[case("c:\\src\\project\\project.sln", ExtensionType::Sln)]
-    #[case("project.csproj", ExtensionType::Csproj)]
-    #[case("project.sln", ExtensionType::Sln)]
+    #[case(r"c:\src\project\project.csproj", ExtensionType::Csproj)]
+    #[case(r"c:\src\project\project.sln", ExtensionType::Sln)]
+    #[case(r"project.csproj", ExtensionType::Csproj)]
+    #[case(r"project.sln", ExtensionType::Sln)]
     fn test_to_extension_type_success(#[case] path_str: &str, #[case] expected: ExtensionType) {
         let path = Path::new(path_str);
         let Ok(result) = to_extension_type(path) else {
@@ -96,13 +96,16 @@ mod tests {
     }
 
     #[rstest]
-    #[case("c:\\src\\project\\bin\\temp\\", true)]
-    #[case("c:\\src\\project\\bin", true)]
-    #[case("C:\\SRC\\PROJECT\\BIN\\TEMP\\", true)]
-    #[case("c:\\src\\project\\", false)]
-    fn test_is_ignored_directory_success(#[case] path: &str, #[case] expected: bool) {
-        let file_path = Path::new(path);
-        let result = is_ignored_directory(file_path);
-        assert_eq!(result, expected);
+    #[case(r"c:\src\project\bin", true)]
+    #[case(r"c:\src\project\BIN", true)]
+    #[case(r"c:\src\project\Bin", true)]
+    #[case(r"c:\src\project\obj", true)]
+    #[case(r"c:\src\project\.git", true)]
+    #[case(r"c:\src\project\.vs", true)]
+    #[case(r"c:\src\project\src", false)]
+    #[case(r"c:\src\project\source", false)]
+    #[case(r"c:\src\project\binary", false)]
+    fn test_is_ignored_directory(#[case] path: &str, #[case] expected: bool) {
+        assert_eq!(is_ignored_directory(Path::new(path)), expected);
     }
 }
