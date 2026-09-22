@@ -1,11 +1,10 @@
+use crate::utils::*;
 use std::fmt::Write;
-use std::fs::{File, read_to_string, read_dir};
-use std::io::{BufRead, BufReader, Result};
+use std::fs::{File, read_dir, read_to_string};
+use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
-use crate::utils::is_ignored_directory;
-
-pub fn find_projects_in_solution(solution_path: &Path) -> Result<Vec<PathBuf>> {
+pub fn find_projects_in_solution(solution_path: &Path) -> io::Result<Vec<PathBuf>> {
     let solution_directory = solution_path.parent().unwrap_or(Path::new("."));
     let mut projects: Vec<PathBuf> = Vec::new();
 
@@ -46,47 +45,54 @@ pub fn append_project(builder: &mut String, project_path: &Path) {
     let project_directory = project_path.parent().unwrap_or(Path::new("."));
 
     // .csproj
-    let Ok(relative_path) = project_path.strip_prefix(project_directory) else {
-        eprintln!("Cannot get relative_path");
-        return; // todo: create error
+    let Ok(()) = append_file_to_builder(builder, project_path, project_directory) else {
+        return; // todo: make an error
     };
-    append_header(builder, relative_path);
-
-    let Ok(file_all_text) = read_to_string(project_path) else {
-        eprintln!("Cannot get file_all_text");
-        return; // todo: create error
-    };
-    writeln!(builder, "{}", file_all_text.trim()).expect("could not append to builder");
-    writeln!(builder, "").expect("could not append to builder"); // new line
 
     // .cs files
     let source_files = collect_files(project_directory).unwrap_or_default(); // todo
     let source_files: Vec<&Path> = source_files.iter().map(|p| p.as_path()).collect();
-
-    for source_file in source_files
-    // todo : remove duplication with csproj part
-    {
-        let Ok(relative_path) = source_file.strip_prefix(project_directory) else {
-            eprintln!("Cannot get relative_path");
-            return; // todo: create error
+    for source_file in source_files {
+        let Ok(()) = append_file_to_builder(builder, source_file, project_directory) else {
+            return; // todo: make an error
         };
-        append_header(builder, relative_path);
-
-        let Ok(file_all_text) = read_to_string(source_file) else {
-            eprintln!("Cannot get file_all_text");
-            return; // todo: create error
-        };
-        writeln!(builder, "{}", file_all_text.trim()).expect("could not append to builder");
-        writeln!(builder, "").expect("could not append to builder"); // new line      
     }
 }
 
-pub fn append_header(builder: &mut String, file_path: &Path) {
-    writeln!(builder, "// {}", file_path.display()).expect("could not append to builder");
+fn append_file_to_builder(
+    builder: &mut String,
+    source_file: &Path,
+    project_directory: &Path,
+) -> Result<(), String> {
+    let Ok(relative_path) = source_file.strip_prefix(project_directory) else {
+        return Err("Cannot get relative_path".to_string());
+    };
+
+    let Ok(()) = append_header(builder, relative_path) else {
+        return Err("Cannot append header to builder".to_string());
+    };
+
+    let Ok(file_all_text) = read_to_string(source_file) else {
+        return Err("Cannot get file_all_textr".to_string());
+    };
+
+    writeln!(builder, "{}", file_all_text.trim()).expect("could not append to builder");
     writeln!(builder, "").expect("could not append to builder"); // new line
+
+    Ok(())
 }
 
-fn collect_files(path: &Path) -> Result<Vec<PathBuf>> {
+fn append_header(builder: &mut String, file_path: &Path) -> Result<(), String> {
+    let Ok(()) = writeln!(builder, "// {}", file_path.display()) else {
+        return Err("could not append to builder".to_string());
+    };
+    let Ok(()) = writeln!(builder, "") else {
+        return Err("could not append to builder".to_string());
+    };
+    Ok(())
+}
+
+fn collect_files(path: &Path) -> io::Result<Vec<PathBuf>> {
     let mut files: Vec<PathBuf> = Vec::new();
     let mut dirs = vec![path.to_path_buf()];
 
@@ -115,7 +121,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn collects_cs_files_recursively() -> Result<()> {
+    fn collects_cs_files_recursively() -> io::Result<()> {
         let temp = tempdir()?;
 
         fs::create_dir(temp.path().join("src"))?;
@@ -139,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn returns_sorted_files() -> Result<()> {
+    fn returns_sorted_files() -> io::Result<()> {
         let temp = tempdir()?;
 
         fs::write(temp.path().join("z.cs"), "")?;
@@ -160,7 +166,7 @@ mod tests {
     }
 
     #[test]
-    fn ignores_non_cs_files() -> Result<()> {
+    fn ignores_non_cs_files() -> io::Result<()> {
         let temp = tempdir()?;
 
         fs::write(temp.path().join("main.rs"), "")?;
@@ -176,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn returns_empty_for_empty_directory() -> Result<()> {
+    fn returns_empty_for_empty_directory() -> io::Result<()> {
         let temp = tempdir()?;
 
         let files = collect_files(temp.path())?;

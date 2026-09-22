@@ -65,7 +65,10 @@ mod tests {
     #[case(r"c:\src\project\project.sln", ExtensionType::Sln)]
     #[case(r"project.csproj", ExtensionType::Csproj)]
     #[case(r"project.sln", ExtensionType::Sln)]
-    fn test_to_extension_type_success(#[case] path_str: &str, #[case] expected: ExtensionType) -> Result<(), String> {
+    fn test_to_extension_type_success(
+        #[case] path_str: &str,
+        #[case] expected: ExtensionType,
+    ) -> Result<(), String> {
         let path = Path::new(path_str);
         let Ok(result) = to_extension_type(path) else {
             return Err("Cannot get ExtensionType".into());
