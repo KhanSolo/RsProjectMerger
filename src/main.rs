@@ -58,7 +58,7 @@ fn main() -> ExitCode {
         println!("{}", project.display());
     }
 
-    let content = build_merged_file(projects /*, output_path*/);
+    let content = build_merged_file(projects);
 
     let Some(out_dir) = output_path.parent() else {
         eprintln!("Cannot get output directory for {}", output_path.display());

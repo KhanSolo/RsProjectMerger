@@ -1,5 +1,5 @@
 use std::fmt::Write;
-use std::fs::{self, File, read_to_string};
+use std::fs::{File, read_to_string, read_dir};
 use std::io::{BufRead, BufReader, Result};
 use std::path::{Path, PathBuf};
 
@@ -91,7 +91,7 @@ fn collect_files(path: &Path) -> Result<Vec<PathBuf>> {
     let mut dirs = vec![path.to_path_buf()];
 
     while let Some(current_dir) = dirs.pop() {
-        for entry in fs::read_dir(current_dir)? {
+        for entry in read_dir(current_dir)? {
             let entry = entry?;
             let path = entry.path();
 
@@ -111,8 +111,6 @@ fn collect_files(path: &Path) -> Result<Vec<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    //use rstest::rstest;
-
     use std::fs;
     use tempfile::tempdir;
 
@@ -182,9 +180,7 @@ mod tests {
         let temp = tempdir()?;
 
         let files = collect_files(temp.path())?;
-
         assert!(files.is_empty());
-
         Ok(())
     }
 }

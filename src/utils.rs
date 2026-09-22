@@ -45,27 +45,14 @@ pub fn format_with_commas(n: usize) -> String {
     r.chars().rev().collect()
 }
 
-pub fn is_ignored_directory(file_path: &Path) -> bool {
-    let mut directory = if file_path.is_file() {
-        file_path.parent()
-    } else {
-        Some(file_path)
-    };
-
-    while let Some(dir) = directory {
-        if let Some(dir_name) = dir.file_name().and_then(|s| s.to_str()) {
-            // get last folder segment
-            if IGNORED_DIRECTORIES
+pub fn is_ignored_directory(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| {
+            IGNORED_DIRECTORIES
                 .iter()
-                .any(|ignored| dir_name.eq_ignore_ascii_case(ignored))
-            // case insensitive (ascii)
-            {
-                return true;
-            }
-        }
-        directory = dir.parent();
-    }
-    false
+                .any(|ignored| name.eq_ignore_ascii_case(ignored))
+        })
 }
 
 #[cfg(test)]
@@ -78,12 +65,13 @@ mod tests {
     #[case(r"c:\src\project\project.sln", ExtensionType::Sln)]
     #[case(r"project.csproj", ExtensionType::Csproj)]
     #[case(r"project.sln", ExtensionType::Sln)]
-    fn test_to_extension_type_success(#[case] path_str: &str, #[case] expected: ExtensionType) {
+    fn test_to_extension_type_success(#[case] path_str: &str, #[case] expected: ExtensionType) -> Result<(), String> {
         let path = Path::new(path_str);
         let Ok(result) = to_extension_type(path) else {
-            panic!("Cannot get ExtensionType");
+            return Err("Cannot get ExtensionType".into());
         };
         assert_eq!(result, expected);
+        Ok(())
     }
 
     #[rstest]
