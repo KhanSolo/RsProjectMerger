@@ -1,4 +1,5 @@
 use crate::utils::*;
+use anyhow::{Context, Result};
 use std::fmt::Write;
 use std::fs::{File, read_dir, read_to_string};
 use std::io::{self, BufRead, BufReader};
@@ -36,60 +37,47 @@ pub fn find_projects_in_solution(solution_path: &Path) -> io::Result<Vec<PathBuf
 pub fn build_merged_file(projects: Vec<&Path>) -> String {
     let mut builder = String::with_capacity(projects.len() * 1024);
     for project_path in projects {
-        append_project(&mut builder, project_path);
+        let _ = append_project(&mut builder, project_path); // todo: build_merged_file should return Result<>
     }
     builder
 }
 
-pub fn append_project(builder: &mut String, project_path: &Path) {
+pub fn append_project(builder: &mut String, project_path: &Path) -> Result<()> {
     let project_directory = project_path.parent().unwrap_or(Path::new("."));
 
     // .csproj
-    let Ok(()) = append_file_to_builder(builder, project_path, project_directory) else {
-        return; // todo: make an error
-    };
+    append_file_to_builder(builder, project_path, project_directory)?;
 
     // .cs files
-    let source_files = collect_files(project_directory).unwrap_or_default(); // todo
-    let source_files: Vec<&Path> = source_files.iter().map(|p| p.as_path()).collect();
-    for source_file in source_files {
-        let Ok(()) = append_file_to_builder(builder, source_file, project_directory) else {
-            return; // todo: make an error
-        };
+    for source_file in collect_files(project_directory)? {
+        append_file_to_builder(builder, source_file.as_path(), project_directory)?;
     }
+    Ok(())
 }
 
 fn append_file_to_builder(
     builder: &mut String,
     source_file: &Path,
     project_directory: &Path,
-) -> Result<(), String> {
-    let Ok(relative_path) = source_file.strip_prefix(project_directory) else {
-        return Err("Cannot get relative_path".to_string());
-    };
+) -> Result<()> {
+    let relative_path = source_file
+        .strip_prefix(project_directory)
+        .context("failed to get relative_path")?;
+    append_header(builder, relative_path);
 
-    let Ok(()) = append_header(builder, relative_path) else {
-        return Err("Cannot append header to builder".to_string());
-    };
+    let file_all_text = read_to_string(source_file)
+        .with_context(|| format!("failed to read {}", source_file.display()))?;
 
-    let Ok(file_all_text) = read_to_string(source_file) else {
-        return Err("Cannot get file_all_textr".to_string());
-    };
-
-    writeln!(builder, "{}", file_all_text.trim()).expect("could not append to builder");
-    writeln!(builder, "").expect("could not append to builder"); // new line
+    writeln!(builder, "{}", file_all_text.trim()).unwrap();
+    writeln!(builder).unwrap();
 
     Ok(())
 }
 
-fn append_header(builder: &mut String, file_path: &Path) -> Result<(), String> {
-    let Ok(()) = writeln!(builder, "// {}", file_path.display()) else {
-        return Err("could not append to builder".to_string());
-    };
-    let Ok(()) = writeln!(builder, "") else {
-        return Err("could not append to builder".to_string());
-    };
-    Ok(())
+// writeln! to String cannot fail
+fn append_header(builder: &mut String, file_path: &Path) {
+    writeln!(builder, "// {}", file_path.display()).unwrap();
+    writeln!(builder).unwrap();
 }
 
 fn collect_files(path: &Path) -> io::Result<Vec<PathBuf>> {
